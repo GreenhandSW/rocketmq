@@ -114,9 +114,10 @@ public class RebalancePushImpl extends RebalanceImpl {
     }
 
     /**
-     * 如果默认的推送消费者的均衡设置为true，或者是有序消费的
+     * 如果设置的是默认的推送消费者的客户端负载均衡，或者是有序消费的
      * 或者如果消费机制是广播，就返回true
      * 否则返回false
+     * 也就是说如果负载均衡是要在客户端实现的，那就返回true，否则返回false。
      * @param topic 主题，但是没啥用
      * @return  是否负载均衡
      */

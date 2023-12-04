@@ -243,7 +243,7 @@ public abstract class RebalanceImpl {
             for (final Map.Entry<String, SubscriptionData> entry : subTable.entrySet()) {
                 final String topic = entry.getKey();
                 try {
-                    // 负载均衡只
+                    // 如果这个主题要求的是broker负载均衡，就直接从broker获取均衡结果，否则
                     if (!clientRebalance(topic) && tryQueryAssignment(topic)) {
                         balanced = this.getRebalanceResultFromBroker(topic, isOrder);
                     } else {
@@ -264,9 +264,9 @@ public abstract class RebalanceImpl {
     }
 
     /**
-     * 检查主题是否设置了负载均衡
-     * @param topic
-     * @return
+     * 检查主题是否设置了broker负载均衡
+     * @param topic 检查的主题
+     * @return      true: 已经为主题分配了broker负载均衡; false: 分配了客户端负载均衡、broker分配超时（或者连接不到）或超过3次
      */
     private boolean tryQueryAssignment(String topic) {
         // 如果是在客户端负载均衡就返回false
@@ -281,6 +281,7 @@ public abstract class RebalanceImpl {
         int retryTimes = 0;
         while (retryTimes++ < TIMEOUT_CHECK_TIMES) {
             try {
+                // 进行分配，然后返回true
                 Set<MessageQueueAssignment> resultSet = mQClientFactory.queryAssignment(topic, consumerGroup,
                     strategyName, messageModel, QUERY_ASSIGNMENT_TIMEOUT / TIMEOUT_CHECK_TIMES * retryTimes);
                 topicBrokerRebalance.put(topic, topic);
@@ -293,6 +294,7 @@ public abstract class RebalanceImpl {
                 }
             }
         }
+        // 尝试达到3次分配都失败后，返回false
         if (retryTimes >= TIMEOUT_CHECK_TIMES) {
             // if never success before and timeout exceed TIMEOUT_CHECK_TIMES, force client rebalance
             topicClientRebalance.put(topic, topic);
@@ -385,6 +387,7 @@ public abstract class RebalanceImpl {
     }
 
     private boolean getRebalanceResultFromBroker(final String topic, final boolean isOrder) {
+        // 根据分配策略，要求broker分配负载均衡结果
         String strategyName = this.allocateMessageQueueStrategy.getName();
         Set<MessageQueueAssignment> messageQueueAssignments;
         try {

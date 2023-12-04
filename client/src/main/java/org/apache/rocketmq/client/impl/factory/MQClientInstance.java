@@ -1121,15 +1121,29 @@ public class MQClientInstance {
         return null;
     }
 
+    /**
+     * 根据主题找出一个broker，然后要求broker分配主题到消费者
+     * @param topic
+     * @param consumerGroup
+     * @param strategyName
+     * @param messageModel
+     * @param timeout
+     * @return
+     * @throws RemotingException
+     * @throws InterruptedException
+     * @throws MQBrokerException
+     */
     public Set<MessageQueueAssignment> queryAssignment(final String topic, final String consumerGroup,
         final String strategyName, final MessageModel messageModel, int timeout)
         throws RemotingException, InterruptedException, MQBrokerException {
+        // 查出一个broker路由地址信息
         String brokerAddr = this.findBrokerAddrByTopic(topic);
         if (null == brokerAddr) {
             this.updateTopicRouteInfoFromNameServer(topic);
             brokerAddr = this.findBrokerAddrByTopic(topic);
         }
 
+        // 执行分配
         if (null != brokerAddr) {
             return this.mQClientAPIImpl.queryAssignment(brokerAddr, topic, consumerGroup, clientId, strategyName,
                 messageModel, timeout);

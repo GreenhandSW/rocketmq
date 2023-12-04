@@ -326,10 +326,25 @@ public class MQClientAPIImpl implements NameServerUpdateCallback {
         this.remotingClient.shutdown();
     }
 
+    /**
+     * 发起同步消息分配请求，如果成功则返回分配的Set，否则抛出Broker异常
+     * @param addr
+     * @param topic
+     * @param consumerGroup
+     * @param clientId
+     * @param strategyName
+     * @param messageModel
+     * @param timeoutMillis
+     * @return
+     * @throws RemotingException
+     * @throws MQBrokerException
+     * @throws InterruptedException
+     */
     public Set<MessageQueueAssignment> queryAssignment(final String addr, final String topic,
         final String consumerGroup, final String clientId, final String strategyName,
         final MessageModel messageModel, final long timeoutMillis)
         throws RemotingException, MQBrokerException, InterruptedException {
+        // 构造并发起消息分配请求
         QueryAssignmentRequestBody requestBody = new QueryAssignmentRequestBody();
         requestBody.setTopic(topic);
         requestBody.setConsumerGroup(consumerGroup);
