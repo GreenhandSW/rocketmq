@@ -22,14 +22,18 @@ package org.apache.rocketmq.remoting.protocol.heartbeat;
 
 /**
  * Message model
+ * 消息推送及消费的机制（负载均衡或集群）<br>
+ * 参考资料：<a href="https://baijiahao.baidu.com/s?id=1777919323929104700">深入理解RocketMQ 广播消费</a>
  */
 public enum MessageModel {
     /**
      * broadcast
+     * 同一Topic下的一条消息会推送到同一消费组中的所有消费者，也就是消息至少被消费一次
      */
     BROADCASTING("BROADCASTING"),
     /**
      * clustering
+     * 同一Topic下的一条消息只会被同一消费组中的一个消费者消费，也就是把消息负载均衡到多个消费者了
      */
     CLUSTERING("CLUSTERING");
 

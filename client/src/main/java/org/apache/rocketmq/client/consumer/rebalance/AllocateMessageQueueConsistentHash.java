@@ -29,6 +29,9 @@ import org.apache.rocketmq.common.message.MessageQueue;
  */
 public class AllocateMessageQueueConsistentHash extends AbstractAllocateMessageQueueStrategy {
 
+    /**
+     * 虚拟节点数量，默认为10
+     */
     private final int virtualNodeCnt;
     private final HashFunction customHashFunction;
 
@@ -48,20 +51,22 @@ public class AllocateMessageQueueConsistentHash extends AbstractAllocateMessageQ
         this.customHashFunction = customHashFunction;
     }
 
+
     @Override
     public List<MessageQueue> allocate(String consumerGroup, String currentCID, List<MessageQueue> mqAll,
         List<String> cidAll) {
 
         List<MessageQueue> result = new ArrayList<>();
+        // 如果当前消费者不在所有消费者id列表里，直接返回空MQ列表。
         if (!check(consumerGroup, currentCID, mqAll, cidAll)) {
             return result;
         }
-
+        // 添加所有客户端节点
         Collection<ClientNode> cidNodes = new ArrayList<>();
         for (String cid : cidAll) {
             cidNodes.add(new ClientNode(cid));
         }
-
+        // 创建一个虚拟节点数量默认为10的一致性哈希路由器
         final ConsistentHashRouter<ClientNode> router; //for building hash ring
         if (customHashFunction != null) {
             router = new ConsistentHashRouter<>(cidNodes, virtualNodeCnt, customHashFunction);
@@ -71,6 +76,7 @@ public class AllocateMessageQueueConsistentHash extends AbstractAllocateMessageQ
 
         List<MessageQueue> results = new ArrayList<>();
         for (MessageQueue mq : mqAll) {
+            // 为MQ路由一个客户端节点，如果路由到当前客户端，就把MQ放到结果里
             ClientNode clientNode = router.routeNode(mq.toString());
             if (clientNode != null && currentCID.equals(clientNode.getKey())) {
                 results.add(mq);

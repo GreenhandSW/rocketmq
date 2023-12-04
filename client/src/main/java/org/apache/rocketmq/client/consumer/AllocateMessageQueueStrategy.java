@@ -25,8 +25,8 @@ import org.apache.rocketmq.common.message.MessageQueue;
 public interface AllocateMessageQueueStrategy {
 
     /**
-     * Allocating by consumer id
-     *
+     * Allocating by consumer id <br>
+     * 为当前消费者分配消息队列
      * @param consumerGroup current consumer group
      * @param currentCID current consumer id
      * @param mqAll message queue set in current topic

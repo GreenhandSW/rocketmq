@@ -113,6 +113,13 @@ public class RebalancePushImpl extends RebalanceImpl {
         return true;
     }
 
+    /**
+     * 如果默认的推送消费者的均衡设置为true，或者是有序消费的
+     * 或者如果消费机制是广播，就返回true
+     * 否则返回false
+     * @param topic 主题，但是没啥用
+     * @return  是否负载均衡
+     */
     @Override
     public boolean clientRebalance(String topic) {
         // POPTODO order pop consume not implement yet

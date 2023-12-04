@@ -105,19 +105,24 @@ public abstract class ServiceThread implements Runnable {
     }
 
     protected void waitForRunning(long interval) {
+        // 已经收到了消息通知，不用等了，直接返回
         if (hasNotified.compareAndSet(true, false)) {
             this.onWaitEnd();
             return;
         }
 
         //entry to wait
+        // 重置CountDownLatch为1，开始等待消息通知
         waitPoint.reset();
 
+        //
         try {
+            // 按照设定的时间等待（默认20秒）
             waitPoint.await(interval, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             log.error("Interrupted", e);
         } finally {
+            // 没等到消息就返回
             hasNotified.set(false);
             this.onWaitEnd();
         }

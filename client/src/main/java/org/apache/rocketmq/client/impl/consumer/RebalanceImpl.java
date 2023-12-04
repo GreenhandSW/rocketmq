@@ -236,11 +236,14 @@ public abstract class RebalanceImpl {
 
     public boolean doRebalance(final boolean isOrder) {
         boolean balanced = true;
+        // 获取消费者和订阅信息（主要是主题）之间的订阅关系map
         Map<String, SubscriptionData> subTable = this.getSubscriptionInner();
         if (subTable != null) {
+            // 对每个消费者的订阅信息，获取其主题，
             for (final Map.Entry<String, SubscriptionData> entry : subTable.entrySet()) {
                 final String topic = entry.getKey();
                 try {
+                    // 负载均衡只
                     if (!clientRebalance(topic) && tryQueryAssignment(topic)) {
                         balanced = this.getRebalanceResultFromBroker(topic, isOrder);
                     } else {
@@ -260,11 +263,17 @@ public abstract class RebalanceImpl {
         return balanced;
     }
 
+    /**
+     * 检查主题是否设置了负载均衡
+     * @param topic
+     * @return
+     */
     private boolean tryQueryAssignment(String topic) {
+        // 如果是在客户端负载均衡就返回false
         if (topicClientRebalance.containsKey(topic)) {
             return false;
         }
-
+        // 如果是在broker负载均衡就返回true
         if (topicBrokerRebalance.containsKey(topic)) {
             return true;
         }

@@ -29,6 +29,15 @@ public abstract class AbstractAllocateMessageQueueStrategy implements AllocateMe
 
     private static final Logger log = LoggerFactory.getLogger(AbstractAllocateMessageQueueStrategy.class);
 
+    /**
+     * 检查参数是否为空，
+     * 并检查消费者id列表是否包含当前消费者
+     * @param consumerGroup 消费者组
+     * @param currentCID    当前消费者id
+     * @param mqAll         所有消息队列
+     * @param cidAll        所有消费者id
+     * @return              true：包含当前消费者；false：不包含。
+     */
     public boolean check(String consumerGroup, String currentCID, List<MessageQueue> mqAll,
         List<String> cidAll) {
         if (StringUtils.isEmpty(currentCID)) {

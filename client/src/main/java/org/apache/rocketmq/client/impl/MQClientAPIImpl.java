@@ -1554,6 +1554,7 @@ public class MQClientAPIImpl implements NameServerUpdateCallback {
         final String consumerGroup,
         final long timeoutMillis
     ) throws RemotingException, MQBrokerException, InterruptedException {
+        // 根据客户端id及生产者组、消费者组名构建并发起注销客户端的请求
         final UnregisterClientRequestHeader requestHeader = new UnregisterClientRequestHeader();
         requestHeader.setClientID(clientID);
         requestHeader.setProducerGroup(producerGroup);

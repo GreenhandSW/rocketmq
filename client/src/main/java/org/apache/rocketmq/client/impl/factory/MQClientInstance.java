@@ -100,6 +100,7 @@ public class MQClientInstance {
 
     /**
      * The container of the consumer in the current client. The key is the name of consumerGroup.
+     * 当前客户端的消费者map，key是消费者组名，value是消费者实例
      */
     private final ConcurrentMap<String, MQConsumerInner> consumerTable = new ConcurrentHashMap<>();
 
@@ -877,6 +878,13 @@ public class MQClientInstance {
         }
     }
 
+    /**
+     * 注册消费者。通过synchronized同步
+     *
+     * @param group     要注册的组
+     * @param consumer  要注册的消费者
+     * @return 如果组内存在该消费者返回注册失败false，不存在则放入map并返回true成功
+     */
     public synchronized boolean registerConsumer(final String group, final MQConsumerInner consumer) {
         if (null == group || null == consumer) {
             return false;
@@ -891,6 +899,12 @@ public class MQClientInstance {
         return true;
     }
 
+    /**
+     * 删除消费者。通过synchronized同步
+     * 这里不需要提供消费者id，因为已经注册过了，所以只需要从本类中取出就行
+     *
+     * @param group     要删除的组
+     */
     public synchronized void unregisterConsumer(final String group) {
         this.consumerTable.remove(group);
         this.unregisterClient(null, group);
@@ -971,6 +985,7 @@ public class MQClientInstance {
         this.rebalanceService.wakeup();
     }
 
+    // 对消费者列表中的每个消费者进行负载均衡
     public void doRebalance() {
         for (Map.Entry<String, MQConsumerInner> entry : this.consumerTable.entrySet()) {
             MQConsumerInner impl = entry.getValue();
