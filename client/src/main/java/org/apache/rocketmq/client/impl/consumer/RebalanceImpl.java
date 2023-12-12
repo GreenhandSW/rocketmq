@@ -234,19 +234,25 @@ public abstract class RebalanceImpl {
         return true;
     }
 
+    /**
+     * 执行负载均衡
+     * @param isOrder 是否顺序消费
+     * @return 均衡结果
+     */
     public boolean doRebalance(final boolean isOrder) {
         boolean balanced = true;
         // 获取消费者和订阅信息（主要是主题）之间的订阅关系map
         Map<String, SubscriptionData> subTable = this.getSubscriptionInner();
         if (subTable != null) {
-            // 对每个消费者的订阅信息，获取其主题，
+            // 对每个消费者的订阅信息，获取其主题
             for (final Map.Entry<String, SubscriptionData> entry : subTable.entrySet()) {
                 final String topic = entry.getKey();
                 try {
-                    // 如果这个主题要求的是broker负载均衡，就直接从broker获取均衡结果，否则
+                    // 如果这个主题要求的是broker负载均衡，就直接从broker获取均衡结果
                     if (!clientRebalance(topic) && tryQueryAssignment(topic)) {
                         balanced = this.getRebalanceResultFromBroker(topic, isOrder);
                     } else {
+                        // 否则执行负载均衡
                         balanced = this.rebalanceByTopic(topic, isOrder);
                     }
                 } catch (Throwable e) {
@@ -258,6 +264,7 @@ public abstract class RebalanceImpl {
             }
         }
 
+        // 更新重平衡后的processQueueTable、popProcessQueueTable、topicClientRebalance、topicBrokerRebalance
         this.truncateMessageQueueNotMyTopic();
 
         return balanced;
@@ -307,28 +314,41 @@ public abstract class RebalanceImpl {
         return subscriptionInner;
     }
 
+    /**
+     * 客户端负载均衡
+     * @param topic 主题
+     * @param isOrder 是否顺序消费
+     * @return 均衡结果
+     */
     private boolean rebalanceByTopic(final String topic, final boolean isOrder) {
         boolean balanced = true;
         switch (messageModel) {
+            // 如果是广播模式
             case BROADCASTING: {
                 Set<MessageQueue> mqSet = this.topicSubscribeInfoTable.get(topic);
                 if (mqSet != null) {
+                    // 更新消费快照表
                     boolean changed = this.updateProcessQueueTableInRebalance(topic, mqSet, isOrder);
+                    // 如果更新的时候改动了快照表，就通知Broker
                     if (changed) {
                         this.messageQueueChanged(topic, mqSet, mqSet);
                         log.info("messageQueueChanged {} {} {} {}", consumerGroup, topic, mqSet, mqSet);
                     }
 
+                    // 对于广播模式，如果当前工作的消息队列和订阅该主题的消息队列一致，说明均衡成功
                     balanced = mqSet.equals(getWorkingMessageQueue(topic));
                 } else {
+                    // 当前订阅表为空，显然是有所改动，因此通知Broker。
                     this.messageQueueChanged(topic, Collections.<MessageQueue>emptySet(), Collections.<MessageQueue>emptySet());
                     log.warn("doRebalance, {}, but the topic[{}] not exist.", consumerGroup, topic);
                 }
                 break;
             }
+            // 如果是集群模式
             case CLUSTERING: {
                 Set<MessageQueue> mqSet = this.topicSubscribeInfoTable.get(topic);
                 List<String> cidAll = this.mQClientFactory.findConsumerIdList(topic, consumerGroup);
+                // 如果没有消息队列订阅该主题
                 if (null == mqSet) {
                     if (!topic.startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX)) {
                         this.messageQueueChanged(topic, Collections.<MessageQueue>emptySet(), Collections.<MessageQueue>emptySet());
@@ -340,6 +360,7 @@ public abstract class RebalanceImpl {
                     log.warn("doRebalance, {} {}, get consumer id list failed", consumerGroup, topic);
                 }
 
+                // 有消息队列、并且有消费者，才能开始负载均衡
                 if (mqSet != null && cidAll != null) {
                     List<MessageQueue> mqAll = new ArrayList<>();
                     mqAll.addAll(mqSet);
@@ -351,6 +372,7 @@ public abstract class RebalanceImpl {
 
                     List<MessageQueue> allocateResult = null;
                     try {
+                        // 做负载均衡
                         allocateResult = strategy.allocate(
                             this.consumerGroup,
                             this.mQClientFactory.getClientId(),
@@ -365,16 +387,18 @@ public abstract class RebalanceImpl {
                     if (allocateResult != null) {
                         allocateResultSet.addAll(allocateResult);
                     }
-
+                    // 更新消费快照表
                     boolean changed = this.updateProcessQueueTableInRebalance(topic, allocateResultSet, isOrder);
                     if (changed) {
                         log.info(
                             "client rebalanced result changed. allocateMessageQueueStrategyName={}, group={}, topic={}, clientId={}, mqAllSize={}, cidAllSize={}, rebalanceResultSize={}, rebalanceResultSet={}",
                             strategy.getName(), consumerGroup, topic, this.mQClientFactory.getClientId(), mqSet.size(), cidAll.size(),
                             allocateResultSet.size(), allocateResultSet);
+                        // 如果更新的时候改动了快照表，就通知Broker
                         this.messageQueueChanged(topic, mqSet, allocateResultSet);
                     }
 
+                    // 对于集群模式，如果均衡后的消息队列和当前工作消息队列一致，说明均衡成功
                     balanced = allocateResultSet.equals(getWorkingMessageQueue(topic));
                 }
                 break;
@@ -442,12 +466,17 @@ public abstract class RebalanceImpl {
         return queueSet;
     }
 
+    /**
+     * 更新重平衡后的processQueueTable、popProcessQueueTable、topicClientRebalance、topicBrokerRebalance
+     */
     private void truncateMessageQueueNotMyTopic() {
         Map<String, SubscriptionData> subTable = this.getSubscriptionInner();
 
+        // 删除订阅主题不存在的快照
         for (MessageQueue mq : this.processQueueTable.keySet()) {
+            // 如果订阅表不存在订阅的主题
             if (!subTable.containsKey(mq.getTopic())) {
-
+                // 就删除快照，将其设置为丢弃状态
                 ProcessQueue pq = this.processQueueTable.remove(mq);
                 if (pq != null) {
                     pq.setDropped(true);
@@ -456,6 +485,7 @@ public abstract class RebalanceImpl {
             }
         }
 
+        // 删除订阅主题不存在的pop快照
         for (MessageQueue mq : this.popProcessQueueTable.keySet()) {
             if (!subTable.containsKey(mq.getTopic())) {
 
@@ -482,8 +512,16 @@ public abstract class RebalanceImpl {
         }
     }
 
+    /**
+     * 更新消费快照表
+     * @param topic 等待更新的主题
+     * @param mqSet 当前的消息队列
+     * @param isOrder 是否顺序消费
+     * @return 是否改动了消费快照表
+     */
     private boolean updateProcessQueueTableInRebalance(final String topic, final Set<MessageQueue> mqSet,
         final boolean isOrder) {
+        // 是否丢弃、移除过消息
         boolean changed = false;
 
         // drop process queues no longer belong me
@@ -495,9 +533,14 @@ public abstract class RebalanceImpl {
             ProcessQueue pq = next.getValue();
 
             if (mq.getTopic().equals(topic)) {
+                // 消息队列里已经不存在这个消息了，就把它的状态设置为丢弃，放到待丢弃的map中
                 if (!mqSet.contains(mq)) {
                     pq.setDropped(true);
                     removeQueueMap.put(mq, pq);
+                // 或者还存在这个消息，
+                    // 但主动拉取间歇过长，也就是说由于长时间没有拉取，说明消费者已经不再使用这个队列了
+                    // 并且消费者是被动消费（推送模式），那就表示这个消息也应该被丢弃了。
+                    // 总结一下，大致意思就是：消费者是推送模式，但是这个消息2分钟都没推送出去，说明消费者不再使用这个队列了，所以这些消息也没啥用了，应该被丢掉
                 } else if (pq.isPullExpired() && this.consumeType() == ConsumeType.CONSUME_PASSIVELY) {
                     pq.setDropped(true);
                     removeQueueMap.put(mq, pq);
@@ -508,6 +551,9 @@ public abstract class RebalanceImpl {
         }
 
         // remove message queues no longer belong me
+        // 移除已经消费过的消息
+        // 主要是在Broker端把负载均衡的锁解开，然后在这里把解开的消息队列对应的消费快照清理掉
+        // 这样快照map里所有的消息队列都是锁上的状态
         for (Entry<MessageQueue, ProcessQueue> entry : removeQueueMap.entrySet()) {
             MessageQueue mq = entry.getKey();
             ProcessQueue pq = entry.getValue();
@@ -524,6 +570,7 @@ public abstract class RebalanceImpl {
         List<PullRequest> pullRequestList = new ArrayList<>();
         for (MessageQueue mq : mqSet) {
             if (!this.processQueueTable.containsKey(mq)) {
+                // 如果顺序消费，并且这个消息队列没有被负载均衡上锁，那说明现在暂时无法做负载均衡
                 if (isOrder && !this.lock(mq)) {
                     log.warn("doRebalance, {}, add a new mq failed, {}, because lock failed", consumerGroup, mq);
                     allMQLocked = false;
@@ -531,13 +578,17 @@ public abstract class RebalanceImpl {
                 }
 
                 this.removeDirtyOffset(mq);
+                // 创建一个新的消费快照并且上锁
                 ProcessQueue pq = createProcessQueue(topic);
                 pq.setLocked(true);
+                // 如果消费位置有效（实际上必然是有效的，因为<0的位置会直接触发异常），就把快照放到map里
                 long nextOffset = this.computePullFromWhere(mq);
                 if (nextOffset >= 0) {
                     ProcessQueue pre = this.processQueueTable.putIfAbsent(mq, pq);
+                    // 如果这个消费快照本来就存在，不做处理
                     if (pre != null) {
                         log.info("doRebalance, {}, mq already exists, {}", consumerGroup, mq);
+                    // 如果这个消费快照本来不存在，然后他现在已经被放到快照map里等待消费，就继续发起拉取请求
                     } else {
                         log.info("doRebalance, {}, add a new mq, {}", consumerGroup, mq);
                         PullRequest pullRequest = new PullRequest();
@@ -555,10 +606,12 @@ public abstract class RebalanceImpl {
 
         }
 
+        // 消息队列没有都上锁，只能等500ms再做负载均衡
         if (!allMQLocked) {
             mQClientFactory.rebalanceLater(500);
         }
 
+        // 把拉取请求放到计时任务队列里
         this.dispatchPullRequest(pullRequestList, 500);
 
         return changed;

@@ -16,7 +16,15 @@
  */
 package org.apache.rocketmq.common.consumer;
 
+/**
+ * 消费者启动时的消费开始位置
+ */
 public enum ConsumeFromWhere {
+    /**
+     * 从之前的消息开始，分为两种情况：
+     * 1. 最早的消息还没过期，那直接从最早的消息开始
+     * 2. 最早的消息过期了，那就从最近的消息开始
+     */
     CONSUME_FROM_LAST_OFFSET,
 
     @Deprecated
@@ -25,6 +33,12 @@ public enum ConsumeFromWhere {
     CONSUME_FROM_MIN_OFFSET,
     @Deprecated
     CONSUME_FROM_MAX_OFFSET,
+    /**
+     * 从最早的消息开始
+     */
     CONSUME_FROM_FIRST_OFFSET,
+    /**
+     * 从特定时间点开始
+     */
     CONSUME_FROM_TIMESTAMP,
 }

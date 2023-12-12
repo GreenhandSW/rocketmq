@@ -21,7 +21,7 @@ import org.apache.rocketmq.common.message.MessageQueue;
 
 /**
  * Strategy Algorithm for message allocating between consumers
- * 在消费者之间分配消息的算法
+ * 在消费者之间分配消息队列的策略
  */
 public interface AllocateMessageQueueStrategy {
 

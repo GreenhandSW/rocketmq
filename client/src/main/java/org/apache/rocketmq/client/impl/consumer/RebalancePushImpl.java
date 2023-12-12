@@ -50,6 +50,12 @@ public class RebalancePushImpl extends RebalanceImpl {
         this.defaultMQPushConsumerImpl = defaultMQPushConsumerImpl;
     }
 
+    /**
+     * 如果负载均衡结果显示有所改变，就更新拉取消息数量阈值并且通知Broker
+     * @param topic 主题
+     * @param mqAll 所有消息
+     * @param mqDivided 不知道，暂时没啥用
+     */
     @Override
     public void messageQueueChanged(String topic, Set<MessageQueue> mqAll, Set<MessageQueue> mqDivided) {
         /**
@@ -62,6 +68,7 @@ public class RebalancePushImpl extends RebalanceImpl {
         subscriptionData.setSubVersion(newVersion);
 
         int currentQueueCount = this.processQueueTable.size();
+        // 更新拉取消息数量阈值
         if (currentQueueCount != 0) {
             int pullThresholdForTopic = this.defaultMQPushConsumerImpl.getDefaultMQPushConsumer().getPullThresholdForTopic();
             if (pullThresholdForTopic != -1) {
@@ -81,9 +88,16 @@ public class RebalancePushImpl extends RebalanceImpl {
         }
 
         // notify broker
+        // 通知broker
         this.getmQClientFactory().sendHeartbeatToAllBrokerWithLockV2(true);
     }
 
+    /**
+     * 对于已经消费的消息，首先向Broker同步消费进度更新Offset，然后解开Broker里这些消息的锁
+     * @param mq
+     * @param pq
+     * @return
+     */
     @Override
     public boolean removeUnnecessaryMessageQueue(MessageQueue mq, ProcessQueue pq) {
         this.defaultMQPushConsumerImpl.getOffsetStore().persist(mq);
@@ -118,6 +132,7 @@ public class RebalancePushImpl extends RebalanceImpl {
      * 或者如果消费机制是广播，就返回true
      * 否则返回false
      * 也就是说如果负载均衡是要在客户端实现的，那就返回true，否则返回false。
+     * 总之，这个方法是判断是否在客户端负载均衡
      * @param topic 主题，但是没啥用
      * @return  是否负载均衡
      */
@@ -170,6 +185,12 @@ public class RebalancePushImpl extends RebalanceImpl {
         return result;
     }
 
+    /**
+     * 计算拉取消息的offset
+     * @param mq 消息队列
+     * @return 拉取offset
+     * @throws MQClientException 客户端异常
+     */
     @Override
     public long computePullFromWhereWithException(MessageQueue mq) throws MQClientException {
         long result = -1;

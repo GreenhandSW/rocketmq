@@ -28,12 +28,14 @@ package org.apache.rocketmq.remoting.protocol.heartbeat;
 public enum MessageModel {
     /**
      * broadcast
-     * 同一Topic下的一条消息会推送到同一消费组中的所有消费者，也就是消息至少被消费一次
+     * 广播模式
+     * 同一Topic下的一条消息会推送到同一消费组中的所有消费者，也就是消息至少被消费一次（消费组内的每一个消费者都会消费全量消息）
      */
     BROADCASTING("BROADCASTING"),
     /**
      * clustering
-     * 同一Topic下的一条消息只会被同一消费组中的一个消费者消费，也就是把消息负载均衡到多个消费者了
+     * 集群模式（Push消费者默认为集群模式）
+     * 同一Topic下的一条消息只会被同一消费组中的一个消费者消费，也就是把消息负载均衡到多个消费者了（同一个消费组内的消费者分担消费）
      */
     CLUSTERING("CLUSTERING");
 

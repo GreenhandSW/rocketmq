@@ -37,6 +37,7 @@ import org.apache.rocketmq.logging.org.slf4j.LoggerFactory;
 
 /**
  * Queue consumption snapshot
+ * MessageQueue的消费快照
  */
 public class ProcessQueue {
     public final static long REBALANCE_LOCK_MAX_LIVE_TIME =
@@ -67,6 +68,10 @@ public class ProcessQueue {
         return (System.currentTimeMillis() - this.lastLockTimestamp) > REBALANCE_LOCK_MAX_LIVE_TIME;
     }
 
+    /**
+     * 距离上次消费者拉取，已经超过最大拉取间歇时间了
+     * @return 是否过长时间没有拉取
+     */
     public boolean isPullExpired() {
         return (System.currentTimeMillis() - this.lastPullTimestamp) > PULL_MAX_IDLE_TIME;
     }

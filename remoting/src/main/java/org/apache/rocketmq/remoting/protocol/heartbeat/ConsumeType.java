@@ -22,8 +22,10 @@ package org.apache.rocketmq.remoting.protocol.heartbeat;
 
 public enum ConsumeType {
 
+    // 拉模式（主动）
     CONSUME_ACTIVELY("PULL"),
 
+    // 推模式（被动）
     CONSUME_PASSIVELY("PUSH"),
 
     CONSUME_POP("POP");
