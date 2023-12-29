@@ -76,6 +76,9 @@ public abstract class ConfigManager {
         this.persist();
     }
 
+    /**
+     * 把信息保存到配置文件中
+     */
     public synchronized void persist() {
         String jsonString = this.encode(true);
         if (jsonString != null) {

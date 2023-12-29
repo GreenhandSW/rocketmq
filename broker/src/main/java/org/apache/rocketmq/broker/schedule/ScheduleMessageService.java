@@ -73,6 +73,9 @@ public class ScheduleMessageService extends ConfigManager {
     private final ConcurrentMap<Integer /* level */, Long/* delay timeMillis */> delayLevelTable =
         new ConcurrentHashMap<>(32);
 
+    /**
+     * 延迟等级与定时任务offset的map，含义是某个延迟等级下的定时任务执行到了第offset个。
+     */
     private final ConcurrentMap<Integer /* level */, Long/* offset */> offsetTable =
         new ConcurrentHashMap<>(32);
     private final AtomicBoolean started = new AtomicBoolean(false);

@@ -86,6 +86,11 @@ public class TopicValidator {
         }
     }
 
+    /**
+     * 主题名称是否包含违法字符（比如RocketMQ关键字占用的字符）
+     * @param str 主题名称
+     * @return 是否违法
+     */
     public static boolean isTopicOrGroupIllegal(String str) {
         int strLen = str.length();
         int len = VALID_CHAR_BIT_MAP.length;

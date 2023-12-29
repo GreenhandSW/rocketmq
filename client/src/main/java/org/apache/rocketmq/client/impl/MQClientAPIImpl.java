@@ -327,7 +327,7 @@ public class MQClientAPIImpl implements NameServerUpdateCallback {
     }
 
     /**
-     * 发起同步消息分配请求，如果成功则返回分配的Set，否则抛出Broker异常
+     * 发起同步的消息分配请求，如果成功则返回分配的Set，否则抛出Broker异常
      * @param addr
      * @param topic
      * @param consumerGroup

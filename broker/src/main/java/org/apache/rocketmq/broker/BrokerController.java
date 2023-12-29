@@ -572,6 +572,7 @@ public class BrokerController {
     protected void initializeBrokerScheduledTasks() {
         final long initialDelay = UtilAll.computeNextMorningTimeMillis() - System.currentTimeMillis();
         final long period = TimeUnit.DAYS.toMillis(1);
+        // 一天一次，记录收发消息数量
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
@@ -583,10 +584,12 @@ public class BrokerController {
             }
         }, initialDelay, period, TimeUnit.MILLISECONDS);
 
+        // 保存定时任务的offset，初始延迟10秒，后续默认5秒执行一次
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {
                 try {
+                    // 将定时任务当前执行到的offset保存到磁盘
                     BrokerController.this.consumerOffsetManager.persist();
                 } catch (Throwable e) {
                     LOG.error(
@@ -595,6 +598,7 @@ public class BrokerController {
             }
         }, 1000 * 10, this.brokerConfig.getFlushConsumerOffsetInterval(), TimeUnit.MILLISECONDS);
 
+        // 保存消费者过滤器、顺序信息
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {

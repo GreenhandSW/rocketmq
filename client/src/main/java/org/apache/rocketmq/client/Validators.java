@@ -59,15 +59,25 @@ public class Validators {
         }
     }
 
+    /**
+     * 检查消息内容是否合法，主要检查：
+     * 主题名称是否有效、主题是否允许这个生产者发送消息、消息内容长度是否合法(0,4MB]，消息路径是否包含分隔符
+     * @param msg 消息
+     * @param defaultMQProducer 生产者
+     * @throws MQClientException 客户端异常
+     */
     public static void checkMessage(Message msg, DefaultMQProducer defaultMQProducer) throws MQClientException {
         if (null == msg) {
             throw new MQClientException(ResponseCode.MESSAGE_ILLEGAL, "the message is null");
         }
         // topic
+        // 检查主题名称是否有效
         Validators.checkTopic(msg.getTopic());
+        // 检查主题是否允许这个生产者发送消息
         Validators.isNotAllowedSendTopic(msg.getTopic());
 
         // body
+        // 发送的消息不能为空，或者长度为0，或者长度大于最大消息长度（默认是4MB大小）
         if (null == msg.getBody()) {
             throw new MQClientException(ResponseCode.MESSAGE_ILLEGAL, "the message body is null");
         }
@@ -81,6 +91,7 @@ public class Validators {
                 "the message body size over max value, MAX: " + defaultMQProducer.getMaxMessageSize());
         }
 
+        // 没完全看明白，好像是路径是否包含系统分隔符
         String lmqPath = msg.getUserProperty(MessageConst.PROPERTY_INNER_MULTI_DISPATCH);
         if (StringUtils.contains(lmqPath, File.separator)) {
             throw new MQClientException(ResponseCode.MESSAGE_ILLEGAL,
@@ -88,6 +99,12 @@ public class Validators {
         }
     }
 
+    /**
+     * 检查主题是否有效，有效的主题名称应当是：非空、长度小于127个字符、不包含违法字符
+     * 其中只有%|_-以及大小写字母、数字是合法字符。
+     * @param topic 主题名称
+     * @throws MQClientException 客户端异常
+     */
     public static void checkTopic(String topic) throws MQClientException {
         if (UtilAll.isBlank(topic)) {
             throw new MQClientException("The specified topic is blank", null);

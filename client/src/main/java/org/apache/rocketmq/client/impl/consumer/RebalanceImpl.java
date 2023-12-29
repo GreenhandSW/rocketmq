@@ -230,6 +230,11 @@ public abstract class RebalanceImpl {
         }
     }
 
+    /**
+     * 是否由客户端进行负载均衡
+     * @param topic 主题
+     * @return 是否由客户端负载均衡
+     */
     public boolean clientRebalance(String topic) {
         return true;
     }
@@ -248,11 +253,12 @@ public abstract class RebalanceImpl {
             for (final Map.Entry<String, SubscriptionData> entry : subTable.entrySet()) {
                 final String topic = entry.getKey();
                 try {
-                    // 如果这个主题要求的是broker负载均衡，就直接从broker获取均衡结果
+                    // 广播模式没有负载均衡，拉取方式也是自由拉取不必负载均衡，所以对于消费者，只有集群模式的推送方式下才需要执行负载均衡
+                    // 如果这个主题要求的是生产者负载均衡，并且就直接从broker获取均衡结果（实际上是请求在生产者侧进行负载均衡）
                     if (!clientRebalance(topic) && tryQueryAssignment(topic)) {
                         balanced = this.getRebalanceResultFromBroker(topic, isOrder);
                     } else {
-                        // 否则执行负载均衡
+                        // 只有对于集群模式下的推送方式，才执行消费者负载均衡
                         balanced = this.rebalanceByTopic(topic, isOrder);
                     }
                 } catch (Throwable e) {
@@ -271,26 +277,28 @@ public abstract class RebalanceImpl {
     }
 
     /**
-     * 检查主题是否设置了broker负载均衡
+     * 检查主题是否设置了broker负载均衡（让Broker负载均衡实际上是让生产者轮询把消息发到队列里）
      * @param topic 检查的主题
      * @return      true: 已经为主题分配了broker负载均衡; false: 分配了客户端负载均衡、broker分配超时（或者连接不到）或超过3次
      */
     private boolean tryQueryAssignment(String topic) {
-        // 如果是在客户端负载均衡就返回false
+        // 如果是在客户端负载均衡，并且客户端负载均衡表里有这个主题表示已经分配过了，就返回false
         if (topicClientRebalance.containsKey(topic)) {
             return false;
         }
-        // 如果是在broker负载均衡就返回true
+        // 如果是在broker负载均衡，并且broker负载均衡表里有这个主题表示已经分配过了，就返回true
         if (topicBrokerRebalance.containsKey(topic)) {
             return true;
         }
         String strategyName = allocateMessageQueueStrategy != null ? allocateMessageQueueStrategy.getName() : null;
         int retryTimes = 0;
+        // 默认尝试Broker负载均衡，如果3次都失败就更新到消费者负载均衡表，后面会让消费者做负载均衡
         while (retryTimes++ < TIMEOUT_CHECK_TIMES) {
             try {
                 // 进行分配，然后返回true
                 Set<MessageQueueAssignment> resultSet = mQClientFactory.queryAssignment(topic, consumerGroup,
                     strategyName, messageModel, QUERY_ASSIGNMENT_TIMEOUT / TIMEOUT_CHECK_TIMES * retryTimes);
+                // 更新Broker负载均衡表
                 topicBrokerRebalance.put(topic, topic);
                 return true;
             } catch (Throwable t) {
